@@ -287,7 +287,7 @@ def focus():
 @st.cache_data(ttl=3600 * 6, show_spinner=False)
 def ipca_mensal():
     try:
-        v = _get("https://api.bcb.gov.br/dados/serie/bcdata.sgs.433/dados/ultimos/24?formato=json").json()
+        v = _get("https://api.bcb.gov.br/dados/serie/bcdata.sgs.433/dados/ultimos/20?formato=json").json()
         df = pd.DataFrame(v)
         df["data"] = pd.to_datetime(df["data"], dayfirst=True)
         df["valor"] = df["valor"].astype(float)
