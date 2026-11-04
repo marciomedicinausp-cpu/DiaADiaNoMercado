@@ -2760,7 +2760,7 @@ function areaDe(t){if(NAV_PAN.some(z=>z[0]===t))return 'Panorama';if(NAV_PLAN.so
 const dots=r=>`<i class="dots" style="--rc:${RISK_COL[r]}" title="Risco ${RISK_LBL[r].toLowerCase()}">${'●'.repeat(r)}<s>${'●'.repeat(5-r)}</s></i>`;
 function placar(){const ix=t=>L.findIndex(x=>x.t===t),pain=k=>{const p=(OPP.painel||[]).find(x=>semAc(x[0]).startsWith(semAc(k)));return p?p[1]:null};
   const td=n=>(MACRO.td.find(t=>t[0]===n)||[])[3],I=MACRO.idx||{};let fase='';try{fase=cicloProb().fase.replace(/ \(.*\)/,'')}catch(e){}
-  const it=[['Dados de',(DIARIO.data||MACRO.atualizado).slice(0,5),DIARIO.data?'atualizados todo dia útil':'última atualização','Ciclo econômico e a virada'],['Selic',nf(MACRO.selic.atual)+'%','meta do Copom','Renda fixa hoje'],['CDI em 12 meses',I.cdi12!=null?nf(I.cdi12)+'%':'—','acumulado','Simulador de investimentos'],
+  const it=[['Dados de',(DIARIO.data||MACRO.atualizado).slice(0,5),DIARIO.hora?'atualizados às '+DIARIO.hora:DIARIO.data?'atualizados todo dia útil':'última atualização','Ciclo econômico e a virada'],['Selic',nf(MACRO.selic.atual)+'%','meta do Copom','Renda fixa hoje'],['CDI em 12 meses',I.cdi12!=null?nf(I.cdi12)+'%':'—','acumulado','Simulador de investimentos'],
     ['IPCA em 12 meses',I.ipca12!=null?nf(I.ipca12)+'%':'—','meta de 3%','Inflação: projeções'],['Prefixado 2029',td('Tesouro Prefixado 2029')!=null?nf(td('Tesouro Prefixado 2029'))+'%':'—','ao ano','Renda fixa hoje'],
     ['IPCA+ 2040',td('Tesouro IPCA+ 2040')!=null?'+'+nf(td('Tesouro IPCA+ 2040'))+'%':'—','acima da inflação','Títulos públicos na corretora'],
     ['Ibovespa',pain('Ibovespa')||'—','pontos','Oportunidades do momento'],['Dólar',pain('Dólar')||'—','','ETFs nos cenários'],['Ciclo',fase||'—','fase atual','Ciclo econômico e a virada']];
@@ -2825,4 +2825,20 @@ function toastDone(){const n=document.getElementById('next');n.textContent=cur==
 render();
 </script>
 
+<script>
+/* Avisa quando há dados novos (o GitHub atualiza a cada 5 minutos no pregão), sem recarregar a página sozinho. */
+(function(){
+  function checa(){
+    if(document.hidden)return;
+    fetch('diario.json?t='+Date.now(),{cache:'no-store'}).then(function(r){return r.ok?r.json():null}).then(function(j){
+      if(!j||!j.hora||(j.data===DIARIO.data&&j.hora===DIARIO.hora)||document.getElementById('novosDados'))return;
+      var b=document.createElement('button');b.id='novosDados';b.type='button';
+      b.textContent='Dados novos de '+j.hora+' · clique para atualizar';
+      b.style.cssText='position:fixed;right:16px;bottom:16px;z-index:9999;padding:10px 16px;border:0;border-radius:99px;background:#12372A;color:#fff;font:600 14px/1.2 system-ui,sans-serif;box-shadow:0 4px 14px rgba(0,0,0,.25);cursor:pointer';
+      b.onclick=function(){location.reload()};document.body.appendChild(b);
+    }).catch(function(){});
+  }
+  setInterval(checa,120000);
+})();
+</script>
 </html>
