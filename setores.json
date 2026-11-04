@@ -1,0 +1,364 @@
+{
+ "cenarios": [
+  [
+   "inf",
+   "Inflação alta"
+  ],
+  [
+   "sobe",
+   "Juros e Selic subindo"
+  ],
+  [
+   "cai",
+   "Selic caindo"
+  ],
+  [
+   "usd",
+   "Dólar alto"
+  ],
+  [
+   "rec",
+   "Recessão"
+  ]
+ ],
+ "setores": [
+  [
+   "Bancos grandes",
+   "ITUB4, BBDC4, BBAS3, SANB11",
+   {
+    "inf": [
+     0,
+     "Repassam parte da inflação nos juros dos empréstimos."
+    ],
+    "sobe": [
+     1,
+     "Ganham mais com o dinheiro em caixa e com o spread, mas a inadimplência sobe com o tempo."
+    ],
+    "cai": [
+     1,
+     "O crédito volta a crescer e a inadimplência cai."
+    ],
+    "usd": [
+     0,
+     "Pouco afetados."
+    ],
+    "rec": [
+     -1,
+     "Inadimplência sobe e o crédito encolhe."
+    ]
+   }
+  ],
+  [
+   "Seguradoras",
+   "BBSE3, CXSE3, PSSA3",
+   {
+    "inf": [
+     0,
+     "Reajustam prêmios; sinistros também sobem."
+    ],
+    "sobe": [
+     2,
+     "As reservas ficam aplicadas em renda fixa: Selic alta aumenta o lucro financeiro."
+    ],
+    "cai": [
+     -1,
+     "O resultado financeiro das reservas diminui."
+    ],
+    "usd": [
+     0,
+     "Pouco afetadas."
+    ],
+    "rec": [
+     0,
+     "Seguro é gasto difícil de cortar."
+    ]
+   }
+  ],
+  [
+   "Elétricas (transmissão e geração)",
+   "TAEE11, ISAE4, EGIE3, CMIG4, AXIA3",
+   {
+    "inf": [
+     1,
+     "Receitas reajustadas pelo IPCA ou IGP-M nos contratos."
+    ],
+    "sobe": [
+     -2,
+     "Funcionam como \"títulos\": com juros altos, o investidor prefere o IPCA+ e a ação cai. Dívida mais cara."
+    ],
+    "cai": [
+     2,
+     "Estão entre as maiores beneficiadas: a renda previsível fica mais valiosa."
+    ],
+    "usd": [
+     0,
+     "Pouco afetadas."
+    ],
+    "rec": [
+     1,
+     "Demanda estável: defensivas."
+    ]
+   }
+  ],
+  [
+   "Saneamento",
+   "SBSP3, SAPR11, CSMG3",
+   {
+    "inf": [
+     1,
+     "Tarifas reajustadas pela inflação."
+    ],
+    "sobe": [
+     -1,
+     "Muito investimento financiado com dívida."
+    ],
+    "cai": [
+     1,
+     "Dívida mais barata e valuation maior."
+    ],
+    "usd": [
+     0,
+     "Pouco afetado."
+    ],
+    "rec": [
+     1,
+     "Serviço essencial."
+    ]
+   }
+  ],
+  [
+   "Shoppings e imóveis de renda",
+   "MULT3, ALOS3, IGTI11",
+   {
+    "inf": [
+     1,
+     "Aluguéis reajustados por IGP-M ou IPCA."
+    ],
+    "sobe": [
+     -1,
+     "Concorrem com a renda fixa e o consumo esfria."
+    ],
+    "cai": [
+     1,
+     "Imóveis e consumo se valorizam."
+    ],
+    "usd": [
+     0,
+     "Pouco afetados."
+    ],
+    "rec": [
+     -1,
+     "Vendas dos lojistas caem."
+    ]
+   }
+  ],
+  [
+   "Varejo e consumo discricionário",
+   "MGLU3, LREN3, AZZA3, CEAB3",
+   {
+    "inf": [
+     -1,
+     "A inflação corrói a renda das famílias."
+    ],
+    "sobe": [
+     -2,
+     "Crédito ao consumidor caro, vendas a prazo e dívida da empresa mais caras."
+    ],
+    "cai": [
+     2,
+     "As maiores beneficiadas: crédito barato e consumo em alta."
+    ],
+    "usd": [
+     -1,
+     "Produtos importados mais caros."
+    ],
+    "rec": [
+     -2,
+     "Primeiro gasto a ser cortado."
+    ]
+   }
+  ],
+  [
+   "Construção civil",
+   "CYRE3, MRVE3, DIRR3, CURY3",
+   {
+    "inf": [
+     -1,
+     "Custos de obra (INCC) sobem."
+    ],
+    "sobe": [
+     -2,
+     "Financiamento imobiliário caro trava as vendas (baixa renda sofre menos, por causa do Minha Casa Minha Vida)."
+    ],
+    "cai": [
+     2,
+     "Crédito imobiliário barato impulsiona lançamentos."
+    ],
+    "usd": [
+     0,
+     "Pouco afetada."
+    ],
+    "rec": [
+     -1,
+     "Vendas caem."
+    ]
+   }
+  ],
+  [
+   "Educação, saúde e empresas endividadas",
+   "COGN3, YDUQ3, HAPV3, RENT3",
+   {
+    "inf": [
+     0,
+     "Repasse de preço parcial."
+    ],
+    "sobe": [
+     -2,
+     "A dívida fica muito mais cara e come o lucro."
+    ],
+    "cai": [
+     2,
+     "Alívio grande no custo da dívida."
+    ],
+    "usd": [
+     0,
+     "Pouco afetadas."
+    ],
+    "rec": [
+     -1,
+     "Inadimplência de clientes."
+    ]
+   }
+  ],
+  [
+   "Exportadoras e commodities",
+   "VALE3, SUZB3, KLBN11, GGBR4, PETR4, PRIO3, EMBJ3, WEGE3",
+   {
+    "inf": [
+     1,
+     "Inflação global costuma vir com commodities em alta."
+    ],
+    "sobe": [
+     0,
+     "Pouco dependem da Selic: vendem em dólar."
+    ],
+    "cai": [
+     0,
+     "Ganham menos que as empresas domésticas."
+    ],
+    "usd": [
+     2,
+     "Receita em dólar e custo em real: margem sobe."
+    ],
+    "rec": [
+     0,
+     "Dependem da economia global, não da brasileira."
+    ]
+   }
+  ],
+  [
+   "Consumo básico e alimentos",
+   "ABEV3, ASAI3, MBRF3",
+   {
+    "inf": [
+     0,
+     "Repassam preço com atraso."
+    ],
+    "sobe": [
+     -1,
+     "Consumo mais fraco."
+    ],
+    "cai": [
+     1,
+     "Consumo melhora."
+    ],
+    "usd": [
+     0,
+     "Custos de insumos sobem, exportação ajuda."
+    ],
+    "rec": [
+     1,
+     "Defensivas: comida e bebida não somem."
+    ]
+   }
+  ],
+  [
+   "Bolsa, corretoras e gestoras",
+   "B3SA3, BPAC11",
+   {
+    "inf": [
+     0,
+     "Pouco efeito direto."
+    ],
+    "sobe": [
+     -2,
+     "O investidor troca ações pela renda fixa."
+    ],
+    "cai": [
+     2,
+     "Dinheiro migra para a bolsa: mais volume e receita."
+    ],
+    "usd": [
+     0,
+     "Pouco afetadas."
+    ],
+    "rec": [
+     -1,
+     "Menos negócios."
+    ]
+   }
+  ],
+  [
+   "Tecnologia e crescimento",
+   "TOTS3, LWSA3",
+   {
+    "inf": [
+     -1,
+     "Custos de pessoal sobem."
+    ],
+    "sobe": [
+     -2,
+     "O lucro está no futuro distante: juros altos derrubam o valor presente."
+    ],
+    "cai": [
+     2,
+     "Valuation se expande."
+    ],
+    "usd": [
+     0,
+     "Misto."
+    ],
+    "rec": [
+     -1,
+     "Empresas cortam gastos de TI."
+    ]
+   }
+  ],
+  [
+   "Telecom",
+   "VIVT3, TIMS3",
+   {
+    "inf": [
+     1,
+     "Contratos reajustados."
+    ],
+    "sobe": [
+     -1,
+     "Concorrem com a renda fixa."
+    ],
+    "cai": [
+     1,
+     "Dividendos ficam mais atraentes."
+    ],
+    "usd": [
+     0,
+     "Pouco afetadas."
+    ],
+    "rec": [
+     1,
+     "Serviço essencial."
+    ]
+   }
+  ]
+ ]
+}
