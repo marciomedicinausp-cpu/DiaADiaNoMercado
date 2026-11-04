@@ -16,7 +16,7 @@ import streamlit.components.v1 as components
 import calculos as C
 import dados as D
 
-st.set_page_config(page_title="Dia a Dia no Mercado", page_icon="📈", layout="wide", initial_sidebar_state="expanded")
+st.set_page_config(page_title="Dia a Dia no Mercado", page_icon="📈", layout="wide", initial_sidebar_state="collapsed")
 
 SITE = "https://marciomedicinausp-cpu.github.io/DiaADiaNoMercado/"
 
@@ -79,9 +79,9 @@ def grafico_resultado(xs, ys, S, titulo="Resultado no vencimento (R$)"):
 
 
 # ---------------- barra lateral ----------------
-PAGINAS = ["Início", "Renda fixa e inflação", "Títulos públicos na corretora", "Simulador e melhores ativos",
-           "Ações por fundamentos", "Estratégias com opções", "Quanto vale esta opção?", "Radar de opções", "Aulas (site completo)"]
-AO_VIVO = {"Início", "Estratégias com opções", "Quanto vale esta opção?", "Radar de opções"}  # páginas com preços do pregão
+PAGINAS = ["Site completo (aulas e simuladores)", "Painel ao vivo", "Renda fixa e inflação", "Títulos públicos na corretora", "Simulador e melhores ativos",
+           "Ações por fundamentos", "Estratégias com opções", "Quanto vale esta opção?", "Radar de opções"]
+AO_VIVO = {"Painel ao vivo", "Estratégias com opções", "Quanto vale esta opção?", "Radar de opções"}  # páginas com preços do pregão
 
 st.sidebar.title("Dia a Dia no Mercado")
 st.sidebar.caption("Conteúdo educativo. Não é recomendação de investimento.")
@@ -106,7 +106,7 @@ def selo():
 
 
 # ---------------- Início ----------------
-if pagina == "Início":
+if pagina == "Painel ao vivo":
     st.title("Painel do investidor")
     selo()
     foc, orig_foc = D.focus()
@@ -144,7 +144,7 @@ if pagina == "Início":
         st.subheader("De onde vêm os dados")
         st.dataframe(pd.DataFrame([["Selic", orig_selic], ["Focus", orig_foc], ["IPCA", orig_ipca], ["Tesouro", D.tesouro()[1]]],
                                   columns=["Dado", "Origem"]), hide_index=True, use_container_width=True)
-    st.info("Use o menu à esquerda. As **Aulas** trazem o site completo, com as 35 lições e os simuladores.")
+    st.info("Use o menu à esquerda (seta no canto superior esquerdo). O **Site completo** traz as 35 lições e os simuladores.")
     st.caption(AVISO)
 
 # ---------------- Quanto vale esta opção? ----------------
@@ -536,12 +536,16 @@ elif pagina == "Ações por fundamentos":
                                        "Dív.L/PL": lambda v: NUM(v, 2)}), hide_index=True, use_container_width=True, height=560)
         st.caption("Nota de 0 a 12: valuation, rentabilidade, dívida, dividendos e setor no ciclo (juros altos e dólar forte favorecem exportadoras, seguradoras e elétricas). " + AVISO)
 
-# ---------------- Aulas ----------------
+# ---------------- Site completo: a página principal, em tela cheia ----------------
 else:
-    st.title("Aulas e simuladores")
-    st.markdown("As 35 lições e os simuladores ficam no site, que abre mais rápido numa aba própria.")
-    st.link_button("Abrir o site das aulas em tela cheia", SITE, type="primary")
+    st.markdown("""<style>
+    .block-container {padding:0 !important; max-width:100% !important;}
+    [data-testid="stMain"] iframe {height:100vh !important; width:100% !important; border:0; display:block;}
+    header[data-testid="stHeader"] {background:transparent; height:0;}
+    [data-testid="stMain"] [data-testid="stVerticalBlock"] {gap:0;}
+    </style>""", unsafe_allow_html=True)
     components.iframe(SITE, height=900, scrolling=True)
+    st.stop()  # sem rodapé: o site já tem o aviso
 
 # ---------------- aviso em todas as páginas ----------------
 st.divider()
