@@ -60,7 +60,7 @@ def acumulado(valores):
 
 def bloco_bc(D: dict):
     selic = sgs(432, 1)[-1][1]
-    ipca = sgs(433, 24)
+    ipca = sgs(433, 20)
     selic_m = [v for _, v in sgs(4390, 12)]
     cdi_m = [v for _, v in sgs(4391, 12)]
     idx = D.setdefault("indexadores", {})
