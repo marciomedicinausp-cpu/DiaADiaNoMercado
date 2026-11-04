@@ -91,9 +91,6 @@ auto = st.sidebar.toggle("Atualizar a cada minuto no pregão", value=True)
 if st.sidebar.button("Atualizar dados agora", use_container_width=True):
     st.cache_data.clear()
     st.rerun()
-st.sidebar.caption(("Pregão aberto. " if pregao else "Pregão fechado. ") +
-                   "Preços renovados a cada minuto; juros e inflação a cada poucas horas. "
-                   "Se uma fonte não responde, o app usa a reserva de " + D.SNAP["data"] + ".")
 selic, orig_selic = D.selic_atual()
 
 
