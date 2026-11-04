@@ -12,7 +12,9 @@ import datetime as dt
 import io
 import json
 import re
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
 import pandas as pd
 import requests
@@ -36,19 +38,63 @@ class _Resp:
         return json.loads(self.content)
 
 
+_FORA = {}  # site -> momento em que deixou de responder
+
+
 def _get(url, limite=None, **kw):
-    """Baixa com prazo total: se a fonte estiver lenta ou bloqueada, desiste e o app usa a reserva."""
+    """Baixa com prazo total. Se o site não responde, fica 10 minutos sem tentar de novo
+    (o app usa a reserva na hora, em vez de esperar e travar)."""
     import time
+    from urllib.parse import urlparse
+    host = urlparse(url).netloc
+    if time.time() - _FORA.get(host, 0) < 600:
+        raise ConnectionError(f"{host} sem resposta há pouco")
     limite = limite or TIMEOUT
     fim = time.monotonic() + limite
-    with requests.get(url, headers=HDR, timeout=(5, 8), stream=True, **kw) as r:
-        r.raise_for_status()
-        partes = []
-        for bloco in r.iter_content(65536):
-            partes.append(bloco)
-            if time.monotonic() > fim:
-                raise TimeoutError(f"fonte lenta: {url}")
+    try:
+        with requests.get(url, headers=HDR, timeout=(4, 8), stream=True, **kw) as r:
+            r.raise_for_status()
+            partes = []
+            for bloco in r.iter_content(65536):
+                partes.append(bloco)
+                if time.monotonic() > fim:
+                    raise TimeoutError(f"fonte lenta: {url}")
+    except (requests.ConnectionError, requests.Timeout, TimeoutError):
+        _FORA[host] = time.time()
+        raise
     return _Resp(b"".join(partes))
+
+
+FUSO = ZoneInfo("America/Sao_Paulo")
+
+
+def agora() -> dt.datetime:
+    return dt.datetime.now(FUSO)
+
+
+def em_pregao(t: dt.datetime | None = None) -> bool:
+    """Pregão da B3: dias úteis, das 10h às 18h (com folga para o leilão de fechamento)."""
+    t = t or agora()
+    return t.weekday() < 5 and dt.time(9, 55) <= t.time() <= dt.time(18, 10)
+
+
+@st.cache_data(ttl=60, show_spinner=False)
+def mercado_agora():
+    """Ibovespa e dólar ao vivo (Yahoo Finance, atraso de até 15 minutos na B3)."""
+    out = {}
+    try:
+        import yfinance as yf
+        for nome, tk in (("Ibovespa", "^BVSP"), ("Dólar", "BRL=X")):
+            try:
+                h = yf.Ticker(tk).history(period="5d", interval="1d")
+                if len(h) >= 2:
+                    ult, ant = float(h["Close"].iloc[-1]), float(h["Close"].iloc[-2])
+                    out[nome] = (ult, ult / ant - 1)
+            except Exception:
+                continue
+    except Exception:
+        pass
+    return out, agora().strftime("%H:%M")
 
 
 def terceira_sexta(ano: int, mes: int) -> dt.date:
@@ -76,9 +122,13 @@ def dias_uteis(a: dt.date, b: dt.date) -> int:
 
 
 # ---------------- preço das ações ----------------
-@st.cache_data(ttl=900, show_spinner=False)
+@st.cache_data(ttl=60, show_spinner=False)
 def preco(ativo: str):
-    """Retorna (preço, origem)."""
+    """Retorna (preço, origem). Renovado a cada minuto."""
+    return _preco(ativo)
+
+
+def _preco(ativo: str):
     try:
         import yfinance as yf
         h = yf.Ticker(ativo + ".SA").history(period="5d")
@@ -148,10 +198,21 @@ def _limpa(linhas, S, tipo):
     return sorted(ok, key=lambda r: r[1])
 
 
-@st.cache_data(ttl=900, show_spinner=False)
+@st.cache_data(ttl=60, show_spinner=False)
 def opcoes(ativo: str):
-    """Retorna dict com spot, vencimento, du, calls, puts, origem."""
-    S, origem_preco = preco(ativo)
+    """Retorna dict com spot, vencimento, du, calls, puts, origem. Renovado a cada minuto."""
+    return _opcoes(ativo)
+
+
+@st.cache_data(ttl=60, show_spinner=False)
+def opcoes_todas():
+    """As opções de todas as ações, buscadas em paralelo (10 de cada vez)."""
+    with ThreadPoolExecutor(max_workers=10) as ex:
+        return dict(zip(ATIVOS, ex.map(_opcoes, ATIVOS)))
+
+
+def _opcoes(ativo: str):
+    S, origem_preco = _preco(ativo)
     for venc in proximos_vencimentos():
         for d in (venc, venc - dt.timedelta(days=1)):  # vencimento antecipado em feriado
             try:

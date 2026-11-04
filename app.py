@@ -5,6 +5,7 @@ Para rodar:  streamlit run app.py
 from __future__ import annotations
 import datetime as dt
 import math
+import time
 from pathlib import Path
 
 import pandas as pd
@@ -15,10 +16,44 @@ import streamlit.components.v1 as components
 import calculos as C
 import dados as D
 
-st.set_page_config(page_title="Dia a Dia no Mercado", page_icon="📈", layout="wide")
+st.set_page_config(page_title="Dia a Dia no Mercado", page_icon="📈", layout="wide", initial_sidebar_state="expanded")
 
-BRL = lambda v: ("−" if v < 0 else "") + "R$ " + f"{abs(v):,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
-PCT = lambda v, d=1: (f"{v*100:+.{d}f}%").replace(".", ",")
+SITE = "https://marciomedicinausp-cpu.github.io/DiaADiaNoMercado/"
+
+st.markdown("""<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+html, body, .stApp, [data-testid="stMarkdownContainer"], [data-testid="stMetric"], button, input, select, textarea {font-family:'Inter',system-ui,sans-serif !important;}
+.block-container {padding-top:2.2rem; padding-bottom:3rem; max-width:1280px;}
+h1 {font-size:2rem !important; font-weight:700 !important; letter-spacing:-.02em; color:#12372A; margin-bottom:.2rem !important;}
+h2 {font-size:1.35rem !important; font-weight:600 !important; color:#12372A; margin-top:1.6rem !important;}
+h3 {font-size:1.12rem !important; font-weight:600 !important; color:#12372A; margin-top:1.3rem !important;}
+[data-testid="stMetric"] {background:#FFFFFF; border:1px solid #E1E5DD; border-radius:12px; padding:12px 16px; box-shadow:0 1px 2px rgba(0,0,0,.03);}
+[data-testid="stMetricLabel"] p {font-size:.8rem !important; color:#5B6660 !important; font-weight:500;}
+[data-testid="stMetricValue"] {font-size:1.45rem !important; font-weight:600; color:#17201C;}
+[data-testid="stDataFrame"], [data-testid="stTable"] {border:1px solid #E1E5DD; border-radius:10px; overflow:hidden; background:#fff;}
+[data-testid="stSidebar"] {background:#12372A;}
+[data-testid="stSidebar"] * {color:#E9F1EC !important;}
+[data-testid="stSidebar"] h1 {font-size:1.25rem !important; color:#FFFFFF !important; margin:0 !important;}
+[data-testid="stSidebar"] [role="radiogroup"] label {padding:7px 10px; border-radius:8px; margin:1px 0; width:100%;}
+[data-testid="stSidebar"] [role="radiogroup"] label:hover {background:rgba(255,255,255,.08);}
+[data-testid="stSidebar"] [role="radiogroup"] label:has(input:checked) {background:rgba(255,255,255,.16); font-weight:600;}
+[data-testid="stSidebar"] button {background:transparent !important; border:1px solid rgba(255,255,255,.35) !important;}
+[data-testid="stSidebar"] [data-testid="stCaptionContainer"] {opacity:.8;}
+.selo {display:inline-block; font-size:.75rem; font-weight:600; padding:3px 9px; border-radius:99px; margin-right:6px;}
+.selo.vivo {background:#DDF3E6; color:#11794A;} .selo.fechado {background:#EEF0EC; color:#5B6660;}
+#MainMenu, footer, [data-testid="stToolbar"], [data-testid="stStatusWidget"] {visibility:hidden;}
+</style>""", unsafe_allow_html=True)
+
+
+def _ok(v):
+    return v is not None and not (isinstance(v, float) and math.isnan(v))
+
+
+NUM = lambda v, d=2: (f"{v:,.{d}f}".replace(",", "X").replace(".", ",").replace("X", ".")) if _ok(v) else "—"
+TAXA = lambda v, d=2: NUM(v, d) + "%" if _ok(v) else "—"          # valor já em %, ex.: 15.19 -> 15,19%
+BRL = lambda v: (("−" if v < 0 else "") + "R$ " + NUM(abs(v))) if _ok(v) else "—"
+PCT = lambda v, d=1: (f"{v*100:+.{d}f}%").replace(".", ",") if _ok(v) else "—"   # fração, ex.: 0.05 -> +5,0%
+DATA = lambda v: dt.date.fromisoformat(str(v)[:10]).strftime("%d/%m/%Y") if v else "—"
 AVISO_LEGAL = ("Conteúdo educativo. Nada aqui é recomendação de compra ou venda de investimentos: os números são simulações com premissas "
                "simplificadas e dados públicos que podem estar atrasados ou incorretos. Rentabilidade passada não garante rentabilidade futura. "
                "Antes de investir, avalie seu perfil e, se precisar, procure um profissional certificado.")
@@ -44,40 +79,78 @@ def grafico_resultado(xs, ys, S, titulo="Resultado no vencimento (R$)"):
 
 
 # ---------------- barra lateral ----------------
+PAGINAS = ["Início", "Renda fixa e inflação", "Títulos públicos na corretora", "Simulador e melhores ativos",
+           "Ações por fundamentos", "Estratégias com opções", "Quanto vale esta opção?", "Radar de opções", "Aulas (site completo)"]
+AO_VIVO = {"Início", "Estratégias com opções", "Quanto vale esta opção?", "Radar de opções"}  # páginas com preços do pregão
+
 st.sidebar.title("Dia a Dia no Mercado")
-st.sidebar.warning("Conteúdo educativo. Não é recomendação de investimento.")
-st.sidebar.caption("Páginas do menor para o maior risco")
-pagina = st.sidebar.radio("Ir para", ["Início", "Renda fixa e inflação", "Títulos públicos na corretora", "Simulador e melhores ativos",
-                                       "Ações por fundamentos", "Estratégias com opções", "Quanto vale esta opção?", "Radar de opções", "Aulas (site completo)"])
-if st.sidebar.button("Atualizar dados agora"):
+st.sidebar.caption("Conteúdo educativo. Não é recomendação de investimento.")
+pagina = st.sidebar.radio("Páginas, do menor para o maior risco", PAGINAS)
+pregao = D.em_pregao()
+auto = st.sidebar.toggle("Atualizar a cada minuto no pregão", value=True)
+if st.sidebar.button("Atualizar dados agora", use_container_width=True):
     st.cache_data.clear()
     st.rerun()
-st.sidebar.caption("Dados ao vivo quando as fontes respondem; caso contrário, usa a reserva de " + D.SNAP["data"] + ".")
+st.sidebar.caption(("Pregão aberto. " if pregao else "Pregão fechado. ") +
+                   "Preços renovados a cada minuto; juros e inflação a cada poucas horas. "
+                   "Se uma fonte não responde, o app usa a reserva de " + D.SNAP["data"] + ".")
 selic, orig_selic = D.selic_atual()
+
+
+def selo():
+    h = D.agora().strftime("%d/%m %H:%M")
+    if pregao:
+        st.markdown(f'<span class="selo vivo">● Pregão aberto · {h}</span>', unsafe_allow_html=True)
+    else:
+        st.markdown(f'<span class="selo fechado">Pregão fechado · {h}</span>', unsafe_allow_html=True)
+
 
 # ---------------- Início ----------------
 if pagina == "Início":
     st.title("Painel do investidor")
+    selo()
     foc, orig_foc = D.focus()
     ipca, orig_ipca = D.ipca_mensal()
+    mk, hora_mk = D.mercado_agora()
     i12 = (ipca.tail(12)["valor"].div(100).add(1).prod() - 1) * 100
+    anos_i = sorted(foc["IPCA"])
+    anos_s = sorted(foc["Selic"])
+    ano_s = anos_s[1] if len(anos_s) > 1 else anos_s[0]
+    st.subheader("Mercado agora")
     c = st.columns(4)
-    c[0].metric("Selic", f"{selic:.2f}%".replace(".", ","))
-    c[1].metric("IPCA 12 meses", f"{i12:.2f}%".replace(".", ","), f"último mês {ipca['valor'].iloc[-1]:.2f}%".replace(".", ","))
-    anos = sorted(foc["IPCA"])
-    c[2].metric(f"Focus IPCA {anos[0]}", f"{foc['IPCA'][anos[0]]:.2f}%".replace(".", ","))
-    c[3].metric(f"Focus Selic {sorted(foc['Selic'])[1] if len(foc['Selic'])>1 else anos[0]}", f"{foc['Selic'][sorted(foc['Selic'])[1] if len(foc['Selic'])>1 else anos[0]]:.2f}%".replace(".", ","))
-    st.subheader("De onde vêm os dados")
-    st.table(pd.DataFrame([["Selic", orig_selic], ["Focus", orig_foc], ["IPCA", orig_ipca], ["Tesouro", D.tesouro()[1]]], columns=["Dado", "Origem"]))
-    st.subheader(f"Notícias de referência ({D.SNAP['data']})")
-    for k, t in D.SNAP["noticias"]:
-        st.markdown(f"**{k}:** {t}")
-    st.info("Use o menu à esquerda. A página **Aulas** traz o site completo com as 35 lições e simuladores.")
+    if "Ibovespa" in mk:
+        c[0].metric("Ibovespa", NUM(mk["Ibovespa"][0], 0) + " pts", PCT(mk["Ibovespa"][1], 2) + " no dia")
+    else:
+        c[0].metric("Ibovespa", "—")
+    if "Dólar" in mk:
+        c[1].metric("Dólar", "R$ " + NUM(mk["Dólar"][0], 3), PCT(mk["Dólar"][1], 2) + " no dia", delta_color="inverse")
+    else:
+        c[1].metric("Dólar", "—")
+    c[2].metric("Selic (meta)", TAXA(selic))
+    c[3].metric("IPCA 12 meses", TAXA(i12), f"último mês {TAXA(ipca['valor'].iloc[-1])}", delta_color="off")
+    st.caption(f"Ibovespa e dólar: Yahoo Finance às {hora_mk} (a B3 chega com até 15 minutos de atraso).")
+    st.subheader("O que o mercado espera (Focus)")
+    c = st.columns(4)
+    c[0].metric(f"IPCA {anos_i[0]}", TAXA(foc["IPCA"][anos_i[0]]))
+    c[1].metric(f"IPCA {anos_i[1]}" if len(anos_i) > 1 else "IPCA", TAXA(foc["IPCA"][anos_i[1]]) if len(anos_i) > 1 else "—")
+    c[2].metric(f"Selic fim de {anos_s[0]}", TAXA(foc["Selic"][anos_s[0]]))
+    c[3].metric(f"Selic fim de {ano_s}", TAXA(foc["Selic"][ano_s]))
+    col1, col2 = st.columns([3, 2])
+    with col1:
+        st.subheader(f"Notícias de referência ({D.SNAP['data']})")
+        for k, t in D.SNAP["noticias"]:
+            st.markdown(f"**{k}:** {t}")
+    with col2:
+        st.subheader("De onde vêm os dados")
+        st.dataframe(pd.DataFrame([["Selic", orig_selic], ["Focus", orig_foc], ["IPCA", orig_ipca], ["Tesouro", D.tesouro()[1]]],
+                                  columns=["Dado", "Origem"]), hide_index=True, use_container_width=True)
+    st.info("Use o menu à esquerda. As **Aulas** trazem o site completo, com as 35 lições e os simuladores.")
     st.caption(AVISO)
 
 # ---------------- Quanto vale esta opção? ----------------
 elif pagina == "Quanto vale esta opção?":
     st.title("Quanto vale esta opção?")
+    selo()
     st.caption("Escolha a opção: o tipo, a ação, o preço de exercício, o vencimento, o prêmio e a volatilidade vêm sozinhos. "
                "Depois escolha um preço para a ação e uma data para ver quanto ela valeria e quanto você ganharia ou perderia.")
     FER = {dt.date(2026, 11, 20), dt.date(2026, 12, 24), dt.date(2026, 12, 25), dt.date(2026, 12, 31), dt.date(2027, 1, 1),
@@ -157,6 +230,7 @@ elif pagina == "Quanto vale esta opção?":
 # ---------------- Radar ----------------
 elif pagina == "Radar de opções":
     st.title("Radar de opções")
+    selo()
     ativo = st.selectbox("Ativo", D.ATIVOS)
     with st.spinner("Buscando opções..."):
         o = D.opcoes(ativo)
@@ -182,11 +256,10 @@ elif pagina == "Radar de opções":
     df = pd.DataFrame(rows)
     if so_po and len(df):
         df = df[df["Pozinho"] == "sim"]
-    st.dataframe(df, hide_index=True, use_container_width=True, column_config={
-        "Precisa andar": st.column_config.NumberColumn(format="percent"),
-        "Chance no dinheiro": st.column_config.NumberColumn(format="percent"),
-        "Vol. implícita": st.column_config.NumberColumn(format="%.0f%%"),
-        "R$ 1 vira (se andar 10%)": st.column_config.NumberColumn(format="%.1fx")})
+    st.dataframe(df.style.format({"Strike": BRL, "Prêmio": BRL, "Empate": BRL, "Vol. implícita": lambda v: TAXA(v, 0),
+                                  "Delta": lambda v: NUM(v, 2), "Precisa andar": PCT, "Chance no dinheiro": lambda v: TAXA(v * 100, 0) if _ok(v) else "—",
+                                  "R$ 1 vira (se andar 10%)": lambda v: NUM(v, 1) + "×" if _ok(v) else "—"}),
+                 hide_index=True, use_container_width=True)
     st.subheader("Calculadora")
     if len(df):
         esc = st.selectbox("Opção", df["Código"].tolist())
@@ -202,18 +275,18 @@ elif pagina == "Radar de opções":
 # ---------------- Estratégias ----------------
 elif pagina == "Estratégias com opções":
     st.title("Estratégias com opções: ideias de hoje")
+    selo()
     st.write("Ideias geradas com regras explícitas a partir das opções reais das 20 ações mais negociadas. Venda de PUT, venda coberta e financiamento só aparecem quando o prêmio rende mais que a Selic no período.")
     ideias = {e[0]: [] for e in C.ESTRATEGIAS}
-    prog = st.progress(0.0, "Lendo as opções...")
-    for i, a in enumerate(D.ATIVOS):
-        o = D.opcoes(a)
+    with st.spinner("Lendo as opções das 20 ações..."):
+        todas = D.opcoes_todas()
+    for a in D.ATIVOS:
+        o = todas[a]
         res = C.gerar_ideias(a, o["spot"], [r[:3] for r in o["calls"]], [r[:3] for r in o["puts"]], o["du"], selic)
         for k, v in res.items():
             for it in v:
                 it["venc"] = o["venc"]
             ideias[k] += v
-        prog.progress((i + 1) / len(D.ATIVOS), f"{a} lido")
-    prog.empty()
     cols = st.columns(4)
     for i, (eid, nome, desc, risco, nivel) in enumerate(C.ESTRATEGIAS):
         with cols[i % 4]:
@@ -227,7 +300,8 @@ elif pagina == "Estratégias com opções":
         tab = pd.DataFrame([{"Ativo": x["ativo"], "Operação": x["texto"], "Custo(−)/crédito(+)": -x["custo"],
                              "Ganho máximo": x["max"], "Perda máxima": x["min"], "Empate": " / ".join(f"{b:.2f}" for b in x["empate"]),
                              "Prob. de lucro": x["prob"], "Vence": x["venc"]} for x in lst])
-        st.dataframe(tab, hide_index=True, use_container_width=True, column_config={"Prob. de lucro": st.column_config.NumberColumn(format="percent")})
+        st.dataframe(tab.style.format({"Custo(−)/crédito(+)": BRL, "Ganho máximo": BRL, "Perda máxima": BRL,
+                                       "Prob. de lucro": lambda v: TAXA(v * 100, 0) if _ok(v) else "—"}), hide_index=True, use_container_width=True)
         idx = st.selectbox("Ver cenários da ideia", range(len(lst)), format_func=lambda i: f"{lst[i]['ativo']} · {lst[i]['texto'][:90]}")
         it = lst[idx]
         S = it["S"]
@@ -320,8 +394,10 @@ elif pagina == "Renda fixa e inflação":
     td["_p"] = (td["tipo"] != "P").astype(int)
     td = td.sort_values(["_s", "venc", "_p"]).reset_index(drop=True)  # do menor para o maior risco
     st.subheader("Taxas do Tesouro Direto (do menor para o maior risco)")
-    st.dataframe(td[["Risco", "titulo", "tipo", "venc", "taxa"]].rename(columns={"titulo": "Título", "tipo": "Tipo (S/P/I)", "venc": "Vencimento", "taxa": "Taxa (% a.a. ou IPCA +)"}),
-                 hide_index=True, use_container_width=True)
+    tipo_nome = {"S": "Selic (pós)", "P": "Prefixado", "I": "Inflação (IPCA+)"}
+    vis = pd.DataFrame({"Risco": td["Risco"], "Título": td["titulo"], "Tipo": td["tipo"].map(tipo_nome), "Vencimento": td["venc"].map(DATA),
+                        "Taxa": [("Selic + " if t == "S" else "IPCA + " if t == "I" else "") + TAXA(x) for t, x in zip(td["tipo"], td["taxa"])]})
+    st.dataframe(vis, hide_index=True, use_container_width=True, height=420)
     pre = td[(td["tipo"] == "P") & (~td["titulo"].str.contains("Semestrais"))].sort_values("venc")
     ip = td[(td["tipo"] == "I") & (td["titulo"].str.startswith("Tesouro IPCA+ 2")) | (td["titulo"].str.contains("IPCA\\+ 20"))]
     if len(pre) and len(ip):
@@ -341,7 +417,9 @@ elif pagina == "Renda fixa e inflação":
     fig.update_layout(height=300, yaxis_title="% no mês", margin=dict(l=10, r=10, t=10, b=10))
     st.plotly_chart(fig, use_container_width=True)
     st.subheader("Projeções do Focus")
-    st.table(pd.DataFrame({"IPCA (%)": foc["IPCA"], "Selic fim do ano (%)": foc["Selic"]}).sort_index())
+    fdf = pd.DataFrame({"IPCA": foc["IPCA"], "Selic no fim do ano": foc["Selic"]}).sort_index()
+    fdf.index = fdf.index.map(str)
+    st.dataframe(fdf.style.format(TAXA), use_container_width=True)
     st.caption(AVISO)
 
 # ---------------- Títulos públicos na corretora ----------------
@@ -396,9 +474,11 @@ elif pagina == "Títulos públicos na corretora":
         df = df[df["Indexador"].isin(["IPCA", "IGPM"])]
     elif filtro == "Só os que pagam no vencimento":
         df = df[df["Juros"] == "No vencimento"]
-    st.dataframe(df.style.format({"Taxa hoje": "{:.3f}", "Taxa 03/11": "{:.3f}", "Mínimo (R$)": "{:,.2f}", "IR no vencimento": "{:.1%}",
-                                  "Vira no vencimento (R$, líquido)": "{:,.2f}", "Líquido ao ano": PCT, f"Vendendo em {hz:g} ano(s), juros {dj:+g} p.p. (R$)": "{:+,.2f}",
-                                  "Juros −1 p.p.": PCT, "Juros +1 p.p.": PCT}), hide_index=True, use_container_width=True)
+    df["Vence"] = df["Vence"].map(DATA)
+    col_v = f"Vendendo em {hz:g} ano(s), juros {dj:+g} p.p. (R$)"
+    st.dataframe(df.style.format({"Taxa hoje": lambda v: TAXA(v, 3), "Taxa 03/11": lambda v: TAXA(v, 3), "Mínimo (R$)": BRL, "IR no vencimento": lambda v: TAXA(v * 100, 1),
+                                  "Vira no vencimento (R$, líquido)": BRL, "Líquido ao ano": PCT, col_v: lambda v: ("+" if v >= 0 else "") + BRL(v),
+                                  "Juros −1 p.p.": PCT, "Juros +1 p.p.": PCT}), hide_index=True, use_container_width=True, height=520)
     st.caption("LFT: a taxa é o ágio/deságio sobre a Selic. IGP-M considerado igual ao IPCA projetado. Cupons reinvestidos na Selic. " + AVISO)
 
 # ---------------- Ações ----------------
@@ -449,17 +529,28 @@ elif pagina == "Ações por fundamentos":
             s += 2 if ciclo > 0 else 0
             rv, nv = C.risco_acao(tk, divpl)
             rows.append({"_r": rv, "Risco": C.rotulo_risco(nv), "Ação": tk, "Empresa": nome, "Setor": setor, "Nota": s, "P/L": pl, "P/VP": pvp, "ROE %": roe, "DY %": dy,
-                         "Dív.L/PL": divpl, "Ciclo": "favorável" if ciclo > 0 else "neutro", "Notícia": noticia, "Risco": risco, "Origem": origem})
+                         "Dív.L/PL": divpl, "Ciclo": "favorável" if ciclo > 0 else "neutro", "Notícia": noticia, "Ponto de atenção": risco, "Origem": origem})
         st.caption("Em ordem de risco, da ação que menos oscila para a que mais oscila (beta + dívida). Clique numa coluna para reordenar.")
-        st.dataframe(pd.DataFrame(rows).sort_values(["_r", "Nota"], ascending=[True, False]).drop(columns="_r"), hide_index=True, use_container_width=True)
+        tab = pd.DataFrame(rows).sort_values(["_r", "Nota"], ascending=[True, False]).drop(columns="_r")
+        st.dataframe(tab.style.format({"P/L": lambda v: NUM(v, 1), "P/VP": lambda v: NUM(v, 2), "ROE %": lambda v: TAXA(v, 1), "DY %": lambda v: TAXA(v, 1),
+                                       "Dív.L/PL": lambda v: NUM(v, 2)}), hide_index=True, use_container_width=True, height=560)
         st.caption("Nota de 0 a 12: valuation, rentabilidade, dívida, dividendos e setor no ciclo (juros altos e dólar forte favorecem exportadoras, seguradoras e elétricas). " + AVISO)
 
 # ---------------- Aulas ----------------
 else:
-    st.title("Aulas e simuladores (site completo)")
-    html = (Path(__file__).parent / "site" / "escola.html").read_text(encoding="utf-8")
-    components.html(html, height=1600, scrolling=True)
+    st.title("Aulas e simuladores")
+    st.markdown("As 35 lições e os simuladores ficam no site, que abre mais rápido numa aba própria.")
+    st.link_button("Abrir o site das aulas em tela cheia", SITE, type="primary")
+    components.iframe(SITE, height=900, scrolling=True)
 
 # ---------------- aviso em todas as páginas ----------------
 st.divider()
 st.caption(AVISO_LEGAL)
+
+# ---------------- atualização automática no pregão ----------------
+if auto and pregao and pagina in AO_VIVO:
+    aviso = st.empty()
+    for falta in range(60, 0, -1):
+        aviso.caption(f"Próxima atualização dos preços em {falta} s.")
+        time.sleep(1)
+    st.rerun()
