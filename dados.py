@@ -21,17 +21,34 @@ import streamlit as st
 PASTA = Path(__file__).parent
 SNAP = json.loads((PASTA / "snapshot.json").read_text(encoding="utf-8"))
 HDR = {"User-Agent": "Mozilla/5.0 (EscolaTitulosOpcoes)", "Accept": "application/json,text/csv,*/*"}
-TIMEOUT = 20
+TIMEOUT = 15
 
 ATIVOS = list(SNAP["opcoes"].keys())
 MESES_CALL = "ABCDEFGHIJKL"
 MESES_PUT = "MNOPQRSTUVWX"
 
 
-def _get(url, **kw):
-    r = requests.get(url, headers=HDR, timeout=TIMEOUT, **kw)
-    r.raise_for_status()
-    return r
+class _Resp:
+    def __init__(self, content: bytes):
+        self.content = content
+
+    def json(self):
+        return json.loads(self.content)
+
+
+def _get(url, limite=None, **kw):
+    """Baixa com prazo total: se a fonte estiver lenta ou bloqueada, desiste e o app usa a reserva."""
+    import time
+    limite = limite or TIMEOUT
+    fim = time.monotonic() + limite
+    with requests.get(url, headers=HDR, timeout=(5, 8), stream=True, **kw) as r:
+        r.raise_for_status()
+        partes = []
+        for bloco in r.iter_content(65536):
+            partes.append(bloco)
+            if time.monotonic() > fim:
+                raise TimeoutError(f"fonte lenta: {url}")
+    return _Resp(b"".join(partes))
 
 
 def terceira_sexta(ano: int, mes: int) -> dt.date:
@@ -161,7 +178,7 @@ URL_TD = ("https://www.tesourotransparente.gov.br/ckan/dataset/df56aa42-484a-4a5
 @st.cache_data(ttl=3600 * 4, show_spinner=False)
 def tesouro():
     try:
-        df = pd.read_csv(io.BytesIO(_get(URL_TD).content), sep=";", decimal=",", encoding="latin-1")
+        df = pd.read_csv(io.BytesIO(_get(URL_TD, limite=40).content), sep=";", decimal=",", encoding="latin-1")
         df["Data Base"] = pd.to_datetime(df["Data Base"], dayfirst=True)
         df["Data Vencimento"] = pd.to_datetime(df["Data Vencimento"], dayfirst=True)
         ult = df["Data Base"].max()
