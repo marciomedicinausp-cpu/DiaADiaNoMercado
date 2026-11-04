@@ -1,0 +1,56 @@
+name: Atualizar dados do site
+
+on:
+  schedule:
+    # Horários em UTC. Brasília = UTC-3.
+    - cron: "*/5 13-20 * * 1-5"   # a cada 5 minutos, das 10h às 17h55, de segunda a sexta (pregão)
+    - cron: "40 21 * * 1-5"       # 18h40: fechamento do dia, também guardado no repositório
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+concurrency:
+  group: atualizar-site
+  cancel-in-progress: false
+
+jobs:
+  atualizar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment:
+      name: github-pages
+      url: ${{ steps.publicar.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Instalar bibliotecas
+        run: pip install requests pandas yfinance
+
+      - name: Buscar dados novos
+        run: python scripts/atualizar_site.py
+
+      - name: Guardar no repositório (uma vez por dia, depois do fechamento)
+        if: github.event.schedule == '40 21 * * 1-5' || github.event_name == 'workflow_dispatch'
+        run: |
+          git config user.name "Atualização automática"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add site/escola.html site/diario.json
+          git diff --cached --quiet || (git commit -m "Dados de $(TZ=America/Sao_Paulo date +%d/%m/%Y)" && git push)
+
+      - uses: actions/configure-pages@v5
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: .
+
+      - id: publicar
+        uses: actions/deploy-pages@v4
