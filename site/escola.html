@@ -235,7 +235,7 @@ h1,h2,h3,h4{font-family:var(--f-display)}
 .srch{position:relative;margin-left:auto}
 .sq{width:190px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.22);color:#fff;border-radius:8px;padding:8px 12px;font:inherit;font-size:14px}
 .sq::placeholder{color:rgba(255,255,255,.7)}.sq:focus{outline:2px solid var(--gold);outline-offset:1px;background:rgba(255,255,255,.16)}
-.sres{display:block;right:0;left:auto}
+.sres{display:block;right:0;left:auto}.sres[hidden]{display:none}
 .tema{background:none;border:1px solid rgba(255,255,255,.25);color:#fff;width:36px;height:36px;border-radius:50%;font-size:17px;flex:none}
 .menub{display:none;margin-left:auto;background:none;border:1px solid rgba(255,255,255,.35);color:#fff;border-radius:8px;padding:7px 14px;font-weight:700}
 /* placar do dia: o elemento marcante */
@@ -2791,14 +2791,16 @@ function renderNav(){
   const busca=()=>{NAV_Q=q.value;const t=semAc(NAV_Q.trim());if(!t){R.hidden=true;return}
     const ls=L.map((l,i)=>({l,i})).filter(({l})=>semAc(l.t+' '+l.sub+' '+l.mod).includes(t)).slice(0,10);
     R.innerHTML=ls.length?`<ul class="ml">${ls.map(({l,i})=>`<li><button class="mi" data-i="${i}"><span><b>${l.t}</b><small>${areaDe(l.t)==='Aulas'?l.mod:areaDe(l.t)}</small></span></button></li>`).join('')}</ul>`:'<p class="ddh">Nada encontrado. Tente outra palavra, como "dividendos" ou "duration".</p>';R.hidden=false;bind(R)};
-  q.oninput=busca;q.onkeydown=e=>{if(e.key==='Escape'){q.value='';busca()}if(e.key==='Enter'){const f=R.querySelector('[data-i]');if(f)f.click()}};
+  q.oninput=busca;q.onkeydown=e=>{if(e.key==='Escape'){q.value='';busca()}if(e.key==='Enter'||e.keyCode===13){e.preventDefault();busca();const f=R.querySelector('[data-i]');if(f)f.click()}};q.onsearch=()=>{busca();const f=R.querySelector('[data-i]');if(f)f.click()};
   nav.querySelector('#temaB').onclick=()=>{const dark=document.documentElement.getAttribute('data-theme')==='dark'||(!document.documentElement.getAttribute('data-theme')&&matchMedia('(prefers-color-scheme: dark)').matches);
     const t=dark?'light':'dark';aplicaTema(t);try{localStorage.setItem('escola-tema',t)}catch(e){}};
 }
 document.addEventListener('click',e=>{if(!e.target.closest('.dd'))document.querySelectorAll('#nav .dd.open').forEach(d=>{d.classList.remove('open');d.querySelector('.ddb').setAttribute('aria-expanded','false')});
-  if(!e.target.closest('.srch')){const r=document.getElementById('navR');if(r)r.hidden=true}});
+  if(!e.target.closest('.srch')){const r=document.getElementById('navR');if(r)r.hidden=true}
+  if(!e.target.closest('#nav'))fechaMenu()});
 document.addEventListener('keydown',e=>{if(e.key==='Escape')document.querySelectorAll('#nav .dd.open').forEach(d=>d.classList.remove('open'))});
-function go(i){cur=i;save();render();window.scrollTo({top:0,behavior:'smooth'})}
+function fechaMenu(){const nv=document.getElementById('nav');if(nv)nv.classList.remove('mopen');const b=document.getElementById('menuB');if(b){b.textContent='Menu';b.setAttribute('aria-expanded','false')}}
+function go(i){fechaMenu();if(document.activeElement&&document.activeElement.blur)document.activeElement.blur();cur=i;save();render();window.scrollTo({top:0,behavior:'smooth'})}
 function render(){
   renderNav();
   if(cur>=L.length){main.innerHTML=`<section class="card done"><h2>Trilha concluída</h2><p>Você já sabe o que move títulos e opções. Agora use as ferramentas do topo do menu no dia a dia: comece pelo Panorama, monte sua carteira e só depois vá para as opções.</p><button class="btn" id="back">Revisar a lição 1</button></section>`;back.onclick=()=>go(0);return}
